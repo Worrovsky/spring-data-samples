@@ -74,6 +74,17 @@ spring.datasource.password=dbpass
 spring.datasource.driver-class-name
 ```
 
+Пример для базы H2:
+```
+// локально относительно рабочего каталога
+spring.datasource.url=jdbc:h2:./data/test-database1111
+// абсолютный путь
+spring.datasource.url=jdbc:h2:/data/test-database1111
+// в памяти
+spring.datasource.url=jdbc:h2:mem:test
+```
+
+
 Полный список [docs](https://docs.spring.io/spring-boot/docs/current/reference/html/application-properties.html#appendix.application-properties.data)
 
 Для пула по умолчанию используется **HikariCP** (включена в `spring-boot-starter-jdbc`).
@@ -747,4 +758,137 @@ public class A {
 
 
 [id](003.004.023)
+
+
+## 024. Пример Spring Boot + JPA
+
+
+Добавить зависимость на БД и spring-boot-starter-data-jpa
+
+    implementation("org.springframework.boot:spring-boot-starter-data-jpa")
+    runtimeOnly("com.h2database:h2")
+
+Создать сущность (entity)
+
+    @Entity
+    @Table(name = "users")
+    open class User () { 
+      ...
+    }
+
+Требования:
+* наличие конструктора по умолчанию
+
+Создать интерфейс-репозиторий, унаследовав один из стандартных и объявить нужные методы
+
+    interface UserRepository: Repository<User, Long> {
+      fun save(user: User)
+    }
+
+Что делает Spring Boot:
+* JPA конфигурируется автоматически
+* PlatformTransactionManager, EntityManager также автоматически настраиваются
+* DataSource настраивается через свойства (в случае встроенной - достаточно зависимости)
+* нет нужды в скриптах - по сущностямм создаются таблицы (для встроенных)
+* автоматически поддерживается Hikari Connection Pool
+* настраиваются свойства по умолчанию JPA
+* автоматически создаются DAO бины на основании репозиториев (не нужна @EnableJpaRepositories)
+
+
+[id](003.004.024)
+
+
+## 025. Создание класса Entity, требования. Используемые аннотации
+
+Сущность это класс с аннотациями
+* **@Entity**
+* **@Embeddable**
+* **@MappedSuperclass**
+
+Требования из документации Hibernate [hibernate](https://docs.jboss.org/hibernate/orm/6.1/userguide/html_single/Hibernate_User_Guide.html#entity-pojo):
+* должен быть public / protected конструктор по умолчанию  (но работает и с приватным)
+* не должен быть финальным, методы не должны быть финальными 
+  - технически работает с котлиновскими классами по умолчанию (которые финальны)
+  - но не сможет проксировать (проблемы с ленивой загрузкой ??)
+* Serializable должен быть, если предполагается сериализация сущностей 
+  - какие-то случаи передачи между JVM, сохранения в сессиях, непонятно как определить
+  - в общем либо всегда, либо будет ошибка 
+* можно абстрактные, конкретные классы. Наследование в любых комбинациях (сущность наследует обычный класс и наоборот)
+
+Как сканирование выполняется:
+* пакеты с конфигурационными классами **@EnableAutoConfiguration** или **@SpringBootApplication**
+* явное указание через аннотацию **@EntityScan**
+
+
+    @EnableAutoConfiguration
+    @EntityScan(basePackageClasses = [City::class])
+    class MyApplication { ... }
+
+
+
+    @Entity
+    @Table(name = "users")
+    class User: Serializable {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    var id: Long? = null
+    var name: String = ""
+
+    private constructor() {
+        // required by JPA spec
+    }
+
+    constructor(name: String) {
+        this.name = name
+    }
+
+Основные аннотации:
+* **@Entity**
+* **@Table(name = "...")** - имя таблицы задает (во мн. числе)
+* **@Colunm(name = "...")** - имя колонки, по умолчанию - имя поля
+* **@Id** - поле-идентификатор таблицы, для Java - не примитивные типы
+  - сеттер на поле не нужен, Hibernate без него может, приложению не нужно обычно
+  - обычно указывают способ генерации ключа
+* **@GeneratedValue(strategy = ...)**
+  - **IDENTITY** - автогенерация при вставке (если БД поддерживает)
+  - **SEQUENCE** - механизм БД, если нет поддержки - дополнительная таблица
+  - **TABLE** - дополнительная таблица в БД
+  - **AUTO** - выбирает автоматически один из вариантов
+
+
+[id](003.004.025)
+
+
+## 026. Application properties, связанные с Hibernate. Настройки логгирования Hibernate. Где посмотреть перечень application properties
+
+
+Инициализация БД при запуске:
+* **spring.jpa.generate-ddl** - булево, независимо от БД
+* **spring.jpa.hibernate.ddl-auto** - для Hibernate
+  - **none** - Spring Boot использует по умолчанию, если видит не встроенную БД
+  - **create-drop** - Spring Boot по умолчанию, если встроенная БД
+  - **validate**
+  - **update**
+* можно напрямую устанавливать свойства Hibernate через **spring.jpa.properties.<..>**
+
+[spring docs](https://docs.spring.io/spring-boot/docs/1.1.0.M1/reference/html/howto-database-initialization.html)
+[hibernate docs](https://docs.jboss.org/hibernate/orm/6.1/userguide/html_single/Hibernate_User_Guide.html#configurations-hbmddl)
+
+Настройка логгирования:
+
+**Вариант 1** (отображение текста запросов):
+
+    // файл application.properties
+    spring.jpa.show-sql=true
+
+**Вариант 2** (уровень логгирования):
+  
+    // файл application.properties
+    logging.level.org.hibernate.SQL=debug
+
+Полный перечень свойств [docs](https://docs.spring.io/spring-boot/docs/current/reference/html/application-properties.html#appendix.application-properties.data)
+
+
+[id](003.004.026)
 

@@ -4,6 +4,13 @@ target/
 !**/src/main/**/target/
 !**/src/test/**/target/
 
+# Gradle
+.gradle
+/build/
+*/build/
+gradle-app.setting
+!gradle-wrapper.jar
+
 ### STS ###
 .apt_generated
 .classpath
@@ -31,3 +38,6 @@ build/
 
 ### VS Code ###
 .vscode/
+
+### DB files ###
+*.db
