@@ -10,7 +10,7 @@ class Phone {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private var id: Long? = null
 
-    private var number: String = ""
+    var number: String = ""
 
     @ManyToOne
     @JoinColumn(name = "user_id", foreignKey = ForeignKey(name = "USER_ID_FK"))

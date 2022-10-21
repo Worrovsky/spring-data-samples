@@ -2,6 +2,8 @@ package com.example.model
 
 import java.time.LocalDateTime
 import javax.persistence.*
+import javax.validation.constraints.NotNull
+import javax.validation.constraints.Size
 
 @Entity
 @Table(name = "users")
@@ -11,22 +13,20 @@ class User {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private var id: Long? = null
 
-    @Column(name = "name", unique = true)
+    @Column(name = "name", unique = true, length = 42, insertable = false)
+//    @NotNull
+    @Size(min = 3)
     var name: String = ""
 
     private var createdAt: LocalDateTime? = null
-
-    @Enumerated(value = EnumType.STRING)
-    private var gender: Gender? = null
 
     private constructor() {
 
     }
 
-    constructor(name: String, gender: Gender, createdAt: LocalDateTime) {
+    constructor(name: String, createdAt: LocalDateTime) {
         this.name = name
         this.createdAt = createdAt
-        this.gender = gender
     }
 
     override fun toString(): String {
